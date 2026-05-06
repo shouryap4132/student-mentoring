@@ -1,11 +1,9 @@
-import Card from './Card';
+import Button from './components/Button.jsx';
 
 function App() {
-  return <>
-      <Card />
-      <Card />
-      <Card />
-  </>;
+  return (<>
+      <Button />
+  </>);
 }
 
 export default App
