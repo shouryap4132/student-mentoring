@@ -1,9 +1,9 @@
-import UserGreeting from "./components/UserGreeting";
+import List from './components/List';
 
 function App() {
   return (
     <>
-      <UserGreeting isLoggedIn={false} username="sp4132" />
+      <List />
     </>   
   );
 }
