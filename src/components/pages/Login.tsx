@@ -18,17 +18,38 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    // 1. Sign in the user via Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (error) {
-      alert(error.message);
-    } else {
-      // Success! Move to dashboard
-      navigate("/dashboard");
+    if (authError) {
+      alert(authError.message);
+      setLoading(false);
+      return;
     }
+
+    // 2. If Auth is successful, find out who they are in our 'profiles' table
+    if (authData.user) {
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", authData.user.id)
+        .single();
+
+      if (profileError) {
+        console.error("Error fetching profile:", profileError.message);
+        // Fallback to general dashboard if profile fetch hits a snag
+        navigate("/dashboard");
+      } else if (profile.role === "tutor") {
+        // 3. Smart Redirect based on role
+        navigate("/tutordashboard");
+      } else {
+        navigate("/dashboard");
+      }
+    }
+    
     setLoading(false);
   };
 
@@ -49,6 +70,7 @@ export default function Login() {
           className="bg-white p-10 rounded-[2.5rem] shadow-xl border border-stone-200"
         >
           <form onSubmit={handleLogin} className="space-y-6">
+            {/* EMAIL INPUT */}
             <div className="flex flex-col gap-2">
               <label className="font-satoshi font-bold text-[10px] uppercase tracking-widest text-stone-400">
                 Email Address
@@ -63,14 +85,18 @@ export default function Login() {
               />
             </div>
 
+            {/* PASSWORD INPUT */}
             <div className="flex flex-col gap-2">
               <div className="flex justify-between items-center">
                 <label className="font-satoshi font-bold text-[10px] uppercase tracking-widest text-stone-400">
                   Password
                 </label>
-                <a href="#" className="text-[10px] font-bold uppercase text-stone-300 hover:text-black transition-colors">
+                <button 
+                  type="button"
+                  className="text-[10px] font-bold uppercase text-stone-300 hover:text-black transition-colors"
+                >
                   Forgot?
-                </a>
+                </button>
               </div>
               <input
                 type="password"
@@ -82,6 +108,7 @@ export default function Login() {
               />
             </div>
 
+            {/* SUBMIT BUTTON */}
             <motion.button
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.99 }}
@@ -93,6 +120,7 @@ export default function Login() {
             </motion.button>
           </form>
 
+          {/* REDIRECT TO SIGNUP */}
           <div className="mt-8 text-center">
             <p className="text-sm text-stone-400 font-satoshi">
               Don't have an account?{" "}
