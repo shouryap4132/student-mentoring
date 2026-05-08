@@ -1,5 +1,4 @@
 import { motion, useScroll, useTransform } from "framer-motion";
-import { useState, useEffect } from "react";
 
 function Navbar() {
     const { scrollY } = useScroll();
