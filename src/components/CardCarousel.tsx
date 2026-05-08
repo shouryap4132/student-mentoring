@@ -10,15 +10,16 @@ export const CardCarousel = ({ scrollProgress }: Props) => {
   const x = useTransform(scrollProgress, [0, 1], ["0%", "-55%"]);
 
   const tutors = [
-    { name: "Alex", sub: "Calculus", color: "bg-stone-100" },
-    { name: "Sarah", sub: "Biology", color: "bg-stone-200" },
-    { name: "James", sub: "Physics", color: "bg-stone-300" },
-    { name: "Elena", sub: "History", color: "bg-stone-400" },
-    { name: "John", sub: "History", color: "bg-stone-500" },
-    { name: "Some1", sub: "History", color: "bg-stone-400" },
-    { name: "Some1", sub: "History", color: "bg-stone-300" },
-    { name: "Some1", sub: "History", color: "bg-stone-200" },
-    { name: "Some1", sub: "History", color: "bg-stone-100" },
+    { name: "Shourya Patel", sub: "Calculus", color: "bg-stone-100" },
+    { name: "Emily Chen", sub: "Physics", color: "bg-stone-100" },
+    { name: "Michael Lee", sub: "Chemistry", color: "bg-stone-100" },
+    { name: "Sophia Kim", sub: "Biology", color: "bg-stone-100" },
+    { name: "David Nguyen", sub: "Computer Science", color: "bg-stone-100" },
+    { name: "Olivia Garcia", sub: "English", color: "bg-stone-100" },
+    { name: "James Wilson", sub: "History", color: "bg-stone-100" },
+    { name: "Ava Martinez", sub: "Economics", color: "bg-stone-100" },
+    { name: "Ethan Davis", sub: "Psychology", color: "bg-stone-100" },
+ 
   ];
 
   return (

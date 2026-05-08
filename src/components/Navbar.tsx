@@ -2,7 +2,7 @@ import { motion, useScroll, useTransform } from "framer-motion";
 
 function Navbar() {
     const { scrollY } = useScroll();
-    const navbarContent = ["Home", "About", "Contact"];
+    const navbarContent = ["home","about", "contact"];
 
 
     const width = useTransform(scrollY, [0, 50], ["100%", "90%"]);
@@ -50,7 +50,7 @@ function Navbar() {
                 bg-[length:200%_100%]
             "
             >
-          Start Now
+          <a href="/signup">Start Now</a>
         </motion.button>
       </div>
     </motion.nav>
