@@ -1,15 +1,48 @@
 import { useState } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
+import { supabase } from "../../utils/supabaseClient"; 
 
-
-const containerVariants: Variants ={
+const containerVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
 };
 
-
 export default function Signup() {
   const [role, setRole] = useState<"student" | "tutor" | null>(null);
+  
+  // 1. Setup local state for form fields
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [extraInfo, setExtraInfo] = useState(""); // Stores Grade Level or Expertise
+  const [loading, setLoading] = useState(false);
+
+  // 2. The Signup Function
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        // This metadata is what our SQL Trigger uses to build the Profile
+        data: {
+          full_name: fullName,
+          role: role,
+          extra_info: extraInfo, 
+        },
+      },
+    });
+
+    if (error) {
+      alert(error.message);
+    } else {
+      alert("Check your email for a confirmation link!");
+      console.log("User created:", data);
+    }
+    setLoading(false);
+  };
 
   return (
     <motion.main
@@ -35,14 +68,13 @@ export default function Signup() {
           />
           <RoleCard 
             title="I want to tutor" 
-            desc="Share your knowledge and earn while helping others."
+            desc="Share your knowledge and help others grow."
             selected={role === "tutor"}
             onClick={() => setRole("tutor")}
             icon="🎓"
           />
         </div>
 
-        {/* DYNAMIC FORM APPEARS ONCE ROLE IS SELECTED */}
         <AnimatePresence mode="wait">
           {role && (
             <motion.div
@@ -56,26 +88,63 @@ export default function Signup() {
                 {role === "student" ? "Student Details" : "Tutor Application"}
               </h2>
               
-              <form className="space-y-6">
+              <form onSubmit={handleSignUp} className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-6">
-                  <Input label="Full Name" type="text" placeholder="Alex Rivera" />
-                  <Input label="Email" type="email" placeholder="alex@school.edu" />
+                  <Input 
+                    label="Full Name" 
+                    value={fullName}
+                    onChange={(e: any) => setFullName(e.target.value)}
+                    type="text" 
+                    placeholder="Alex Rivera" 
+                    required 
+                  />
+                  <Input 
+                    label="Email" 
+                    value={email}
+                    onChange={(e: any) => setEmail(e.target.value)}
+                    type="email" 
+                    placeholder="alex@school.edu" 
+                    required 
+                  />
                 </div>
 
                 {role === "tutor" ? (
-                  <Input label="Subject Expertise" type="text" placeholder="AP Calculus, Physics..." />
+                  <Input 
+                    label="Subject Expertise" 
+                    value={extraInfo}
+                    onChange={(e: any) => setExtraInfo(e.target.value)}
+                    type="text" 
+                    placeholder="AP Calculus, Physics..." 
+                    required
+                  />
                 ) : (
-                  <Input label="Grade Level" type="text" placeholder="11th Grade" />
+                  <Input 
+                    label="Grade Level" 
+                    value={extraInfo}
+                    onChange={(e: any) => setExtraInfo(e.target.value)}
+                    type="text" 
+                    placeholder="11th Grade" 
+                    required
+                  />
                 )}
 
-                <Input label="Password" type="password" placeholder="••••••••" />
+                <Input 
+                  label="Password" 
+                  value={password}
+                  onChange={(e: any) => setPassword(e.target.value)}
+                  type="password" 
+                  placeholder="••••••••" 
+                  required 
+                />
 
                 <motion.button
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.99 }}
-                  className="w-full py-4 bg-black text-white rounded-2xl font-bold font-satoshi mt-4"
+                  disabled={loading}
+                  type="submit"
+                  className="w-full py-4 bg-black text-white rounded-2xl font-bold font-satoshi mt-4 disabled:bg-stone-400"
                 >
-                  Create Account
+                  {loading ? "Creating Account..." : "Create Account"}
                 </motion.button>
               </form>
             </motion.div>
@@ -111,7 +180,7 @@ function Input({ label, ...props }: any) {
       </label>
       <input
         {...props}
-        className="w-full bg-stone-100 border-none rounded-xl p-4 focus:ring-2 focus:ring-black transition-all font-satoshi"
+        className="w-full bg-stone-100 border-none rounded-xl p-4 focus:ring-2 focus:ring-black transition-all font-satoshi outline-none"
       />
     </div>
   );

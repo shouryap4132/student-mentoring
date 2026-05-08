@@ -5,6 +5,8 @@ import Contact from "./components/pages/Contact";
 import SignUp from "./components/pages/SignUp";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
+import TutorDashboard from "./components/pages/TutorDashboard";
+import Login from "./components/pages/Login";
 
 
 // Create a dummy page for now to test
@@ -19,6 +21,8 @@ function App() {
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/signup" element={<SignUp />} />
+        <Route path="/tutordashboard" element={<TutorDashboard />} />
+        <Route path="/login" element={<Login />} />
 
 
 
