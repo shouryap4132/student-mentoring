@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { supabase } from "../../utils/supabaseClient"; 
+import { useNavigate } from "react-router-dom";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
@@ -9,15 +10,15 @@ const containerVariants: Variants = {
 
 export default function Signup() {
   const [role, setRole] = useState<"student" | "tutor" | null>(null);
+  const navigate = useNavigate();
   
-  // 1. Setup local state for form fields
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [extraInfo, setExtraInfo] = useState(""); // Stores Grade Level or Expertise
+  const [gradeLevel, setGradeLevel] = useState("");
+  const [subjectExpertise, setSubjectExpertise] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // 2. The Signup Function
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -26,11 +27,11 @@ export default function Signup() {
       email,
       password,
       options: {
-        // This metadata is what our SQL Trigger uses to build the Profile
         data: {
           full_name: fullName,
           role: role,
-          extra_info: extraInfo, 
+          grade_level: role === "student" ? gradeLevel : null,
+          subjects: role === "tutor" ? subjectExpertise : null, 
         },
       },
     });
@@ -38,8 +39,8 @@ export default function Signup() {
     if (error) {
       alert(error.message);
     } else {
-      alert("Check your email for a confirmation link!");
-      console.log("User created:", data);
+      alert("Account created! You can now sign in.");
+      navigate("/login");
     }
     setLoading(false);
   };
@@ -110,20 +111,20 @@ export default function Signup() {
 
                 {role === "tutor" ? (
                   <Input 
-                    label="Subject Expertise" 
-                    value={extraInfo}
-                    onChange={(e: any) => setExtraInfo(e.target.value)}
+                    label="Primary Subject Expertise" 
+                    value={subjectExpertise}
+                    onChange={(e: any) => setSubjectExpertise(e.target.value)}
                     type="text" 
-                    placeholder="AP Calculus, Physics..." 
+                    placeholder="e.g. AP Calculus" 
                     required
                   />
                 ) : (
                   <Input 
-                    label="Grade Level" 
-                    value={extraInfo}
-                    onChange={(e: any) => setExtraInfo(e.target.value)}
+                    label="Current Grade Level" 
+                    value={gradeLevel}
+                    onChange={(e: any) => setGradeLevel(e.target.value)}
                     type="text" 
-                    placeholder="11th Grade" 
+                    placeholder="e.g. 11th Grade" 
                     required
                   />
                 )}

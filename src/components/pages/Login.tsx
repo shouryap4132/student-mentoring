@@ -30,23 +30,29 @@ export default function Login() {
       return;
     }
 
-    // 2. If Auth is successful, find out who they are in our 'profiles' table
+    // 2. Auth successful? Fetch the role from our 'profiles' table
     if (authData.user) {
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("role")
         .eq("id", authData.user.id)
-        .single();
+        .maybeSingle(); 
 
       if (profileError) {
         console.error("Error fetching profile:", profileError.message);
-        // Fallback to general dashboard if profile fetch hits a snag
-        navigate("/dashboard");
-      } else if (profile.role === "tutor") {
-        // 3. Smart Redirect based on role
+        setLoading(false);
+        return;
+      }
+
+      // 3. Logic-based redirection
+      if (profile?.role === "tutor") {
         navigate("/tutordashboard");
+      } else if (profile?.role === "student") {
+        navigate("/studentdashboard");
       } else {
-        navigate("/dashboard");
+        // Fallback if role is undefined or missing
+        console.warn("No role found for user, defaulting to student dashboard");
+        navigate("/studentdashboard");
       }
     }
     
@@ -62,8 +68,8 @@ export default function Login() {
     >
       <div className="max-w-md w-full">
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-playfair mb-3">Welcome back.</h1>
-          <p className="text-stone-500 font-satoshi">Sign in to continue your impact.</p>
+          <h1 className="text-4xl font-playfair mb-3 font-medium">Welcome back.</h1>
+          <p className="text-stone-500 font-satoshi font-medium">Sign in to your learning community.</p>
         </div>
 
         <motion.div 
@@ -114,18 +120,17 @@ export default function Login() {
               whileTap={{ scale: 0.99 }}
               disabled={loading}
               type="submit"
-              className="w-full py-4 bg-black text-white rounded-2xl font-bold font-satoshi mt-4 disabled:bg-stone-400 shadow-lg"
+              className="w-full py-4 bg-black text-white rounded-2xl font-bold font-satoshi mt-4 disabled:bg-stone-400 shadow-lg shadow-stone-200/50"
             >
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? "Verifying..." : "Sign In"}
             </motion.button>
           </form>
 
-          {/* REDIRECT TO SIGNUP */}
-          <div className="mt-8 text-center">
-            <p className="text-sm text-stone-400 font-satoshi">
-              Don't have an account?{" "}
+          <div className="mt-8 text-center border-t border-stone-100 pt-8">
+            <p className="text-sm text-stone-400 font-satoshi font-medium">
+              New here?{" "}
               <Link to="/signup" className="text-black font-bold hover:underline">
-                Join now
+                Create an account
               </Link>
             </p>
           </div>
