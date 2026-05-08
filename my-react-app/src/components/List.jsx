@@ -1,12 +1,15 @@
 
-function List() {
-    const fruits = ["Apple", "Banana", "Cherry"];
+function List({category = "Items", items = []}) {
+    const itemList = items;
 
-    const listItems = fruits.map(fruit => <li key={fruit}>{fruit}</li>);
+    const listItems = itemList.map(item => <li key={item.id}>{item.name} - {item.calories} calories</li>);
     return (
-        <ul>
-            {listItems}
-        </ul>
+        <>
+            <h3 className="list-category">{category}</h3>
+            <ol className="list-items">
+                {listItems}
+            </ol>
+        </>
     );
 }
 

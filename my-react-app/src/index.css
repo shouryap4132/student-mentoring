@@ -1,14 +1,26 @@
-.welcome-message {
-  font-size: 2.5em;
-  background-color: #94e466;
-  padding: 20px;
-  color: #333;
-  margin-top: 20px;
+.list-category {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 2.5em;
+    font-weight: bold;
+    color: black;
+    margin-bottom: 10px;
+    text-align: center;
+    border: 3px solid black;
+    border-radius: 5px;
+    padding: 10px;
+    background-color: lightyellow;
 }
-.login-prompt {
-  font-size: 2.5em;
-  background-color: #b13030;
-  padding: 20px;
-  color: #333;
-  margin-top: 20px;
+.list-items {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 2em;
+    color: grey;
+    list-style: none;
+    text-align: center;
+    margin-bottom: 0px;
+}
+
+.list-items li:hover {
+    color: black;
+    font-weight: bold;
+    cursor: pointer;
 }
