@@ -4,54 +4,65 @@ import { supabase } from "../../../utils/supabaseClient";
 
 export default function TutorOverview({ profile }: any) {
   const [nextMeeting, setNextMeeting] = useState<any>(null);
+  const [metrics, setMetrics] = useState({
+    volunteeredHours: 0,
+    rating: 5.0,
+    activeMentees: 0
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchNextMeeting() {
+    async function fetchDashboardData() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const { data, error } = await supabase
+      const tutorId = session.user.id;
+
+      // 1. Fetch Next Meeting
+      const { data: meetingData } = await supabase
         .from("requests")
-        .select(`
-          meeting_date,
-          profiles:student_id (
-            full_name
-          )
-        `)
-        .eq("tutor_id", session.user.id)
+        .select(`meeting_date, profiles:student_id (full_name)`)
+        .eq("tutor_id", tutorId)
         .eq("status", "scheduled")
-        .gte("meeting_date", new Date().toISOString()) 
+        .gte("meeting_date", new Date().toISOString())
         .order("meeting_date", { ascending: true })
         .limit(1)
         .single();
 
-      if (!error && data) {
-        setNextMeeting(data);
-      }
+      // 2. Fetch Active Mentees Count
+      // We count unique students who have an 'accepted' or 'scheduled' status
+      const { data: menteesData } = await supabase
+        .from("requests")
+        .select("student_id")
+        .eq("tutor_id", tutorId)
+        .in("status", ["accepted", "scheduled"]);
+      
+      // Get unique count using a Set
+      const uniqueMentees = new Set(menteesData?.map(m => m.student_id)).size;
+
+      // 3. Set Metrics from Profile & Mentees
+      setMetrics({
+        volunteeredHours: profile?.hours_volunteered || 0,
+        rating: profile?.avg_rating || 5.0,
+        activeMentees: uniqueMentees
+      });
+
+      if (meetingData) setNextMeeting(meetingData);
       setLoading(false);
     }
 
-    fetchNextMeeting();
-  }, []);
+    fetchDashboardData();
+  }, [profile]);
 
   const formatMeetingDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
+      month: "short", day: "numeric", hour: "numeric", minute: "2-digit"
     });
   };
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }} 
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-10"
-    >
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-10">
       <section>
         <div className="flex items-center gap-3 mb-2">
           <span className="h-px w-8 bg-stone-300"></span>
@@ -60,22 +71,22 @@ export default function TutorOverview({ profile }: any) {
         <h1 className="text-4xl font-playfair">Impact Summary</h1>
       </section>
 
-      {/* Metric Cards */}
+      {/* METRIC CARDS - NOW REAL */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <MetricCard 
           label="Total Volunteered" 
-          value={`${profile?.hours_volunteered || "0"} hrs`} 
-          sub="3.2 hrs this month"
+          value={`${metrics.volunteeredHours} hrs`} 
+          sub="Lifetime impact"
         />
         <MetricCard 
           label="Student Rating" 
-          value={profile?.avg_rating || "5.0"} 
-          sub="Based on 12 reviews"
+          value={metrics.rating.toFixed(1)} 
+          sub="Based on student feedback"
         />
         <MetricCard 
           label="Active Mentees" 
-          value="4" 
-          sub="2 new requests"
+          value={metrics.activeMentees.toString()} 
+          sub="Currently mentoring"
         />
       </div>
 
@@ -86,21 +97,15 @@ export default function TutorOverview({ profile }: any) {
             <p className="text-stone-500 text-sm italic font-medium">"Teaching is the highest form of understanding."</p>
             <p className="text-xs font-bold uppercase tracking-widest text-stone-300">— Aristotle</p>
           </div>
-          
           <div className="h-12 w-px bg-stone-100 hidden md:block"></div>
-          
           <div className="text-center md:text-right">
             <p className="text-xs font-bold uppercase tracking-widest text-stone-400 mb-1">Next Session</p>
             {loading ? (
-              <p className="text-stone-300 animate-pulse font-bold">Syncing calendar...</p>
+              <p className="text-stone-300 animate-pulse font-bold">Syncing...</p>
             ) : nextMeeting ? (
-              <div className="animate-in fade-in slide-in-from-right-4 duration-700">
-                <p className="font-bold text-lg text-black">
-                  {formatMeetingDate(nextMeeting.meeting_date)}
-                </p>
-                <p className="text-xs font-medium text-stone-500 capitalize">
-                  with {nextMeeting.profiles?.full_name}
-                </p>
+              <div>
+                <p className="font-bold text-lg text-black">{formatMeetingDate(nextMeeting.meeting_date)}</p>
+                <p className="text-xs font-medium text-stone-500">with {nextMeeting.profiles?.full_name}</p>
               </div>
             ) : (
               <p className="font-bold text-lg text-stone-300 italic">No sessions booked</p>
