@@ -4,21 +4,41 @@ import { supabase } from "../../../utils/supabaseClient";
 export default function FindTutor() {
   const [tutors, setTutors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
   const [requestingId, setRequestingId] = useState<string | null>(null);
   
-  // Now storing objects to track the specific status of each request
+  // Track the status of each request and store calendar dates
   const [requestStatuses, setRequestStatuses] = useState<Record<string, string>>({});
   const [selectedDates, setSelectedDates] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchData();
+
+    // REALTIME SUBSCRIPTION: Listen for changes to the requests table
+    const channel = supabase
+      .channel("find-tutor-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "requests" },
+        () => {
+          // If any request changes (e.g., tutor accepts), refresh statuses
+          fetchData(); 
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchData = async () => {
-    setLoading(true);
+    // Note: We don't want to set global loading to true on every realtime update 
+    // to avoid flickering, so we only do it on initial mount.
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return setLoading(false);
+    if (!session) {
+      setLoading(false);
+      return;
+    }
 
     const [tutorsRes, requestsRes] = await Promise.all([
       supabase.from("profiles").select("*").eq("role", "tutor"),
@@ -28,6 +48,7 @@ export default function FindTutor() {
     if (requestsRes.data) {
       const statusMap: Record<string, string> = {};
       requestsRes.data.forEach(r => {
+        // Ensure keys are consistent (UUIDs can be case sensitive in strings)
         statusMap[String(r.tutor_id).toLowerCase()] = r.status;
       });
       setRequestStatuses(statusMap);
@@ -48,7 +69,9 @@ export default function FindTutor() {
       status: "pending"
     });
 
-    if (!error) {
+    if (error) {
+      alert("Error sending request: " + error.message);
+    } else {
       setRequestStatuses(prev => ({ ...prev, [tutorId.toLowerCase()]: "pending" }));
     }
     setRequestingId(null);
@@ -64,68 +87,100 @@ export default function FindTutor() {
       .eq("tutor_id", tutorId)
       .eq("status", "accepted");
 
-    if (!error) {
+    if (error) {
+      alert("Error scheduling: " + error.message);
+    } else {
       alert("Meeting scheduled!");
       setRequestStatuses(prev => ({ ...prev, [tutorId.toLowerCase()]: "scheduled" }));
     }
   };
 
+  // Resolve ts(6133) by using the loading state
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 gap-4">
+        <div className="w-10 h-10 border-4 border-stone-100 border-t-black rounded-full animate-spin" />
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-stone-400">Syncing Mentors...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8">
-      <h2 className="text-4xl font-playfair font-bold">Find a Mentor</h2>
+    <div className="space-y-10">
+      <header>
+        <h2 className="text-4xl font-playfair font-bold text-stone-900">Find a Mentor</h2>
+        <p className="text-stone-500 mt-2">Connect with experts and schedule your next session.</p>
+      </header>
       
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
         {tutors.map((tutor) => {
           const tid = String(tutor.id).toLowerCase();
           const status = requestStatuses[tid];
 
           return (
-            <div key={tutor.id} className="bg-white p-8 rounded-[2.5rem] border border-stone-200 flex flex-col justify-between shadow-sm">
+            <div key={tutor.id} className="bg-white p-8 rounded-[3rem] border border-stone-200 flex flex-col justify-between shadow-sm hover:shadow-md transition-all">
               <div>
-                <div className="flex justify-between mb-4">
-                  <div className="w-12 h-12 bg-stone-100 rounded-xl flex items-center justify-center font-bold">
+                <div className="flex justify-between items-start mb-6">
+                  <div className="w-14 h-14 bg-stone-50 rounded-2xl flex items-center justify-center text-xl font-bold border border-stone-100 text-stone-400">
                     {tutor.full_name?.[0]}
                   </div>
                   {status && (
-                    <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${
-                      status === 'accepted' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-stone-50 text-stone-400 border-stone-100'
+                    <span className={`text-[9px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full border ${
+                      status === 'accepted' 
+                        ? 'bg-green-50 text-green-600 border-green-100 animate-pulse' 
+                        : 'bg-stone-50 text-stone-400 border-stone-100'
                     }`}>
                       {status}
                     </span>
                   )}
                 </div>
-                <h4 className="text-xl font-bold">{tutor.full_name}</h4>
-                <p className="text-sm text-stone-500 mt-2 mb-6">{tutor.bio}</p>
+                
+                <h4 className="text-2xl font-playfair font-bold text-stone-800">{tutor.full_name}</h4>
+                <p className="text-sm text-stone-500 mt-3 line-clamp-3 leading-relaxed">
+                  {tutor.bio || "No bio provided."}
+                </p>
+                
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {tutor.subjects?.map((s: string) => (
+                    <span key={s} className="text-[10px] font-bold bg-stone-100 px-2 py-1 rounded-md text-stone-600 lowercase">
+                      #{s}
+                    </span>
+                  ))}
+                </div>
               </div>
 
-              {/* DYNAMIC BUTTON LOGIC */}
-              <div className="space-y-3">
+              <div className="mt-10 pt-6 border-t border-stone-50">
                 {status === "accepted" ? (
-                  <div className="space-y-3">
-                    <p className="text-[10px] font-bold uppercase text-green-600">Mentor accepted! Pick a date:</p>
-                    <input 
-                      type="datetime-local" 
-                      onChange={(e) => setSelectedDates(prev => ({ ...prev, [tutor.id]: e.target.value }))}
-                      className="w-full p-3 border border-stone-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-black"
-                    />
+                  <div className="space-y-4">
+                    <div className="p-4 bg-green-50 rounded-2xl border border-green-100">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-green-700 mb-2">Request Approved</p>
+                      <input 
+                        type="datetime-local" 
+                        onChange={(e) => setSelectedDates(prev => ({ ...prev, [tutor.id]: e.target.value }))}
+                        className="w-full bg-white p-3 border border-green-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-500"
+                      />
+                    </div>
                     <button 
                       onClick={() => handleSchedule(tutor.id)}
-                      className="w-full py-4 bg-green-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-green-700 transition-all"
+                      className="w-full py-4 bg-green-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-green-700 transition-all shadow-lg shadow-green-100"
                     >
-                      Confirm Meeting
+                      Confirm Session
                     </button>
                   </div>
                 ) : (
                   <button
                     disabled={!!status || requestingId === tutor.id}
                     onClick={() => handleRequest(tutor.id, tutor.subjects?.[0])}
-                    className={`w-full py-4 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all ${
+                    className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${
                       status 
                         ? "bg-stone-100 text-stone-300 border border-stone-200 cursor-not-allowed" 
-                        : "bg-black text-white hover:bg-stone-800"
+                        : "bg-black text-white hover:bg-stone-800 shadow-xl shadow-stone-200 active:scale-[0.98]"
                     }`}
                   >
-                    {status === "pending" ? "Request Sent" : status === "scheduled" ? "Scheduled" : "Request Mentorship"}
+                    {requestingId === tutor.id ? "Sending..." : 
+                     status === "pending" ? "Waiting for Tutor" : 
+                     status === "scheduled" ? "Session Booked" : 
+                     "Request Mentorship"}
                   </button>
                 )}
               </div>
@@ -133,6 +188,12 @@ export default function FindTutor() {
           );
         })}
       </div>
+
+      {tutors.length === 0 && (
+        <div className="text-center py-20 bg-stone-50 rounded-[3rem] border-2 border-dashed border-stone-200">
+          <p className="text-stone-400 font-medium italic">No mentors matching your criteria found.</p>
+        </div>
+      )}
     </div>
   );
 }
