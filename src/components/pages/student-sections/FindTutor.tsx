@@ -6,21 +6,18 @@ export default function FindTutor() {
   const [loading, setLoading] = useState(true);
   const [requestingId, setRequestingId] = useState<string | null>(null);
   
-  // Track the status of each request and store calendar dates
   const [requestStatuses, setRequestStatuses] = useState<Record<string, string>>({});
   const [selectedDates, setSelectedDates] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchData();
 
-    // REALTIME SUBSCRIPTION: Listen for changes to the requests table
     const channel = supabase
       .channel("find-tutor-realtime")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "requests" },
         () => {
-          // If any request changes (e.g., tutor accepts), refresh statuses
           fetchData(); 
         }
       )
@@ -32,29 +29,37 @@ export default function FindTutor() {
   }, []);
 
   const fetchData = async () => {
-    // Note: We don't want to set global loading to true on every realtime update 
-    // to avoid flickering, so we only do it on initial mount.
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       setLoading(false);
       return;
     }
 
+    console.log("DEBUG: Fetching tutors and requests...");
+
     const [tutorsRes, requestsRes] = await Promise.all([
-      supabase.from("profiles").select("*").eq("role", "tutor"),
-      supabase.from("requests").select("tutor_id, status").eq("student_id", session.user.id)
+      // Ensure avatar_url is explicitly selected here
+      supabase.from("profiles")
+        .select("id, full_name, bio, subjects, avatar_url")
+        .eq("role", "tutor"),
+      supabase.from("requests")
+        .select("tutor_id, status")
+        .eq("student_id", session.user.id)
     ]);
+
+    if (tutorsRes.data) {
+      console.log("DEBUG: Tutors received from Supabase:", tutorsRes.data);
+      setTutors(tutorsRes.data);
+    }
 
     if (requestsRes.data) {
       const statusMap: Record<string, string> = {};
       requestsRes.data.forEach(r => {
-        // Ensure keys are consistent (UUIDs can be case sensitive in strings)
         statusMap[String(r.tutor_id).toLowerCase()] = r.status;
       });
       setRequestStatuses(statusMap);
     }
 
-    if (tutorsRes.data) setTutors(tutorsRes.data);
     setLoading(false);
   };
 
@@ -95,7 +100,6 @@ export default function FindTutor() {
     }
   };
 
-  // Resolve ts(6133) by using the loading state
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-32 gap-4">
@@ -121,8 +125,22 @@ export default function FindTutor() {
             <div key={tutor.id} className="bg-white p-8 rounded-[3rem] border border-stone-200 flex flex-col justify-between shadow-sm hover:shadow-md transition-all">
               <div>
                 <div className="flex justify-between items-start mb-6">
-                  <div className="w-14 h-14 bg-stone-50 rounded-2xl flex items-center justify-center text-xl font-bold border border-stone-100 text-stone-400">
-                    {tutor.full_name?.[0]}
+                  {/* PROFILE PICTURE LOGIC */}
+                  <div className="w-16 h-16 bg-stone-50 rounded-2xl flex items-center justify-center border border-stone-100 overflow-hidden shrink-0">
+                    {tutor.avatar_url ? (
+                      <img 
+                        src={tutor.avatar_url} 
+                        alt={tutor.full_name} 
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          console.error(`DEBUG: Image failed to load for ${tutor.full_name}. URL:`, tutor.avatar_url);
+                        }}
+                      />
+                    ) : (
+                      <span className="text-xl font-bold text-stone-400">
+                        {tutor.full_name?.[0]}
+                      </span>
+                    )}
                   </div>
                   {status && (
                     <span className={`text-[9px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full border ${
