@@ -10,13 +10,14 @@ import TutorDashboard from "./components/pages/TutorDashboard";
 import Login from "./components/pages/Login";
 import StudentDashboard from "./components/pages/StudentDashboard";
 import LeadershipDashboard from "./components/pages/LeadershipDashboard";
+import MasterDashboard from "./components/pages/MasterDashboard";
 
 
 // Create a dummy page for now to test
 
 function App() {
   const location = useLocation();
-  const hideFooter = ["/tutordashboard", "/studentdashboard", "/leadership"].includes(location.pathname);
+  const hideFooter = ["/tutordashboard", "/studentdashboard", "/leadership", "/master"].includes(location.pathname);
 
   return (
     <>
@@ -30,6 +31,7 @@ function App() {
         <Route path="/tutordashboard" element={<TutorDashboard />} />
         <Route path="/studentdashboard" element={<StudentDashboard />} />
         <Route path="/leadership" element={<LeadershipDashboard />} />
+        <Route path="/master" element={<MasterDashboard />} />
         <Route path="/login" element={<Login />} />
       </Routes>
 

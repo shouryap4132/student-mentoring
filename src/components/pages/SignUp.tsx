@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { supabase } from "../../utils/supabaseClient"; 
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
@@ -23,25 +24,52 @@ export default function Signup() {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
+    // 1. Create auth account
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           full_name: fullName,
-          role: role,
-          grade_level: role === "student" ? gradeLevel : null,
-          subjects: role === "tutor" ? subjectExpertise : null, 
         },
       },
     });
 
-    if (error) {
-      alert(error.message);
-    } else {
-      alert("Account created! You can now sign in.");
+    if (authError) {
+      toast.error(authError.message);
+      setLoading(false);
+      return;
+    }
+
+    // 2. Insert profile with correct role (default to 'student' if neither selected)
+    if (authData.user) {
+      const profileRole = role || "student"; // Default to student
+      
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .insert({
+          id: authData.user.id,
+          email: email,
+          full_name: fullName,
+          role: profileRole,
+          grade_level: profileRole === "student" ? gradeLevel : null,
+          subjects: profileRole === "tutor" ? [subjectExpertise] : [],
+          bio: "",
+          avatar_url: null,
+          created_at: new Date().toISOString(),
+        });
+
+      if (profileError) {
+        console.error("Profile creation error:", profileError);
+        toast.error("Account created but profile setup failed. Please try logging in.");
+        setLoading(false);
+        return;
+      }
+
+      toast.success("Account created! You can now sign in.");
       navigate("/login");
     }
+    
     setLoading(false);
   };
 

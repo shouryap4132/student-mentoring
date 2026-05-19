@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { supabase } from "../../../utils/supabaseClient";
 
 export default function StudentRequests() {
@@ -75,9 +76,26 @@ export default function StudentRequests() {
 
     if (error) {
       console.error("DEBUG: Accept Error:", error);
-      alert("Error accepting: " + error.message);
+      toast.error("Error accepting request: " + error.message);
     } else {
       setRequests(prev => prev.filter(r => r.id !== requestId));
+      toast.success("Request accepted!");
+    }
+  };
+
+  const handleDecline = async (requestId: string) => {
+    console.log("DEBUG: Attempting to decline request:", requestId);
+    const { error } = await supabase
+      .from("requests")
+      .update({ status: "declined" })
+      .eq("id", requestId);
+
+    if (error) {
+      console.error("DEBUG: Decline Error:", error);
+      toast.error("Error declining request: " + error.message);
+    } else {
+      setRequests(prev => prev.filter(r => r.id !== requestId));
+      toast.success("Request declined.");
     }
   };
 
@@ -95,7 +113,7 @@ export default function StudentRequests() {
       
       {requests.length === 0 ? (
         <div className="p-10 border-2 border-dashed rounded-3xl text-center text-stone-400">
-          No pending requests found. Check console for debug logs.
+          No pending requests found.
         </div>
       ) : (
         <div className="grid gap-4">
@@ -108,12 +126,20 @@ export default function StudentRequests() {
                 </h4>
                 <p className="text-stone-500">Subject: {req.subject}</p>
               </div>
-              <button 
-                onClick={() => handleAccept(req.id)}
-                className="px-6 py-3 bg-black text-white rounded-xl text-xs font-bold uppercase"
-              >
-                Accept
-              </button>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => handleDecline(req.id)}
+                  className="px-6 py-3 bg-stone-200 text-stone-900 rounded-xl text-xs font-bold uppercase hover:bg-stone-300 transition-all"
+                >
+                  Decline
+                </button>
+                <button 
+                  onClick={() => handleAccept(req.id)}
+                  className="px-6 py-3 bg-black text-white rounded-xl text-xs font-bold uppercase hover:bg-stone-900 transition-all"
+                >
+                  Accept
+                </button>
+              </div>
             </div>
           ))}
         </div>

@@ -38,6 +38,38 @@ export default function LeadershipDashboard() {
       setProfile(profileData);
       await Promise.all([fetchLogs(), fetchRequests()]);
       setLoading(false);
+
+      // REALTIME LISTENERS
+      // Listen for new/updated hours_logs
+      const hoursChannel = supabase
+        .channel("leadership-hours-changes")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "hours_logs" },
+          () => {
+            console.log("Hours log change detected! Refreshing...");
+            fetchLogs();
+          }
+        )
+        .subscribe();
+
+      // Listen for new/updated requests
+      const requestsChannel = supabase
+        .channel("leadership-requests-changes")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "requests" },
+          () => {
+            console.log("Request change detected! Refreshing...");
+            fetchRequests();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(hoursChannel);
+        supabase.removeChannel(requestsChannel);
+      };
     }
 
     loadDashboard();

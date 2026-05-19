@@ -9,6 +9,7 @@ import StudentRequests from "./sections/StudentRequests.tsx";
 import ResourceLibrary from "./sections/ResourceLibrary.tsx";
 import VolunteerSettings from "./sections/VolunteerSettings.tsx";
 import LogHours from "./sections/LogHours.tsx";
+import Messaging from "./sections/Messaging.tsx";
 import LeadershipDashboard from "./LeadershipDashboard.tsx";
 
 export default function TutorDashboard() {
@@ -89,6 +90,7 @@ export default function TutorDashboard() {
       case "sessions": return <UpcomingSessions />;
       case "requests": return <StudentRequests />;
       case "hours": return <LogHours />;
+      case "messages": return <Messaging />;
       case "leadership": return <LeadershipDashboard />;
       case "resources": return <ResourceLibrary />;
       case "settings": return <VolunteerSettings profile={profile} setProfile={setProfile} />;

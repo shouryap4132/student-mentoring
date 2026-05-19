@@ -55,6 +55,49 @@ export default function TutorOverview({ profile }: any) {
     }
 
     fetchDashboardData();
+
+    // REALTIME LISTENERS - Watch for changes to requests and hours_logs
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const requestsChannel = supabase
+      .channel(`overview-requests-${session.user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "requests",
+          filter: `tutor_id=eq.${session.user.id}`,
+        },
+        () => {
+          console.log("Request change detected in overview! Refreshing...");
+          fetchDashboardData();
+        }
+      )
+      .subscribe();
+
+    const hoursChannel = supabase
+      .channel(`overview-hours-${session.user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "hours_logs",
+          filter: `tutor_id=eq.${session.user.id}`,
+        },
+        () => {
+          console.log("Hours log change detected in overview! Refreshing...");
+          fetchDashboardData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(requestsChannel);
+      supabase.removeChannel(hoursChannel);
+    };
   }, [profile]);
 
   const formatMeetingDate = (dateString: string) => {

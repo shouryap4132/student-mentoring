@@ -16,7 +16,8 @@ export default function ProgressTracking({ profile }: any) {
       const { data, error } = await supabase
         .from("hours_logs")
         .select("hours")
-        .eq("student_id", session.user.id);
+        .eq("student_id", session.user.id)
+        .eq("approved", true);
 
       if (error) {
         console.error("Failed to fetch progress:", error);
@@ -34,6 +35,31 @@ export default function ProgressTracking({ profile }: any) {
     }
 
     fetchProgress();
+
+    // REALTIME LISTENER - Watch for approved hours changes
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const channel = supabase
+      .channel(`progress-${session.user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "hours_logs",
+          filter: `student_id=eq.${session.user.id}`,
+        },
+        () => {
+          console.log("Progress update detected! Refreshing...");
+          fetchProgress();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [profile]);
 
   const percentage = progress.goalHours ? Math.min(100, (progress.hoursLearned / progress.goalHours) * 100) : 0;
@@ -43,7 +69,7 @@ export default function ProgressTracking({ profile }: any) {
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <h2 className="text-3xl font-playfair font-bold">Learning Progress</h2>
-          <p className="text-stone-500 mt-2">Your current progress is powered by actual Supabase session records.</p>
+          <p className="text-stone-500 mt-2">Real-time progress synced with approved tutor sessions.</p>
         </div>
         <div className="bg-stone-900 text-white px-6 py-4 rounded-3xl">
           <p className="text-[10px] uppercase tracking-[0.3em] text-stone-400">Goal</p>
