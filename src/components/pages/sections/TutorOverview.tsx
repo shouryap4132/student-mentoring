@@ -27,22 +27,25 @@ export default function TutorOverview({ profile }: any) {
         .gte("meeting_date", new Date().toISOString())
         .order("meeting_date", { ascending: true })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       // 2. Fetch Active Mentees Count
-      // We count unique students who have an 'accepted' or 'scheduled' status
       const { data: menteesData } = await supabase
         .from("requests")
         .select("student_id")
         .eq("tutor_id", tutorId)
         .in("status", ["accepted", "scheduled"]);
-      
-      // Get unique count using a Set
-      const uniqueMentees = new Set(menteesData?.map(m => m.student_id)).size;
+      const uniqueMentees = new Set(menteesData?.map((m: any) => m.student_id)).size;
 
-      // 3. Set Metrics from Profile & Mentees
+      // 3. Fetch volunteer hours from logs
+      const { data: logRows } = await supabase
+        .from("hours_logs")
+        .select("hours")
+        .eq("tutor_id", tutorId);
+      const volunteeredHours = (logRows || []).reduce((sum: number, row: any) => sum + Number(row.hours || 0), 0);
+
       setMetrics({
-        volunteeredHours: profile?.hours_volunteered || 0,
+        volunteeredHours,
         rating: profile?.avg_rating || 5.0,
         activeMentees: uniqueMentees
       });

@@ -8,6 +8,8 @@ import UpcomingSessions from "./sections/UpcomingSessions.tsx";
 import StudentRequests from "./sections/StudentRequests.tsx";
 import ResourceLibrary from "./sections/ResourceLibrary.tsx";
 import VolunteerSettings from "./sections/VolunteerSettings.tsx";
+import LogHours from "./sections/LogHours.tsx";
+import LeadershipDashboard from "./LeadershipDashboard.tsx";
 
 export default function TutorDashboard() {
   const [view, setView] = useState("overview");
@@ -38,37 +40,42 @@ export default function TutorDashboard() {
       // Fetch Profile
       const { data } = await supabase.from("profiles").select("*").eq("id", session.user.id).maybeSingle();
       
-      if (!data || data.role !== "tutor") { 
+      if (!data || (data.role !== "tutor" && data.role !== "master" && data.role !== "leadership")) {
         navigate("/login"); 
-      } else { 
-        setProfile(data); 
+      } else {
+        setProfile(data);
         setLoading(false);
-        
-        // 3. Initial fetch when page loads
-        fetchCount(session.user.id);
+        if (data.role !== "tutor") {
+          setView("leadership");
+        }
 
-        // 4. THE REALTIME LISTENER
-        // This watches the 'requests' table for any changes
-        const channel = supabase
-          .channel("sidebar-count-changes")
-          .on(
-            "postgres_changes",
-            { 
-              event: "*", 
-              schema: "public", 
-              table: "requests",
-              filter: `tutor_id=eq.${session.user.id}` // Only listen to YOUR requests
-            },
-            () => {
-              console.log("Change detected! Updating count...");
-              fetchCount(session.user.id);
-            }
-          )
-          .subscribe();
+        if (data.role === "tutor") {
+          // 3. Initial fetch when page loads
+          fetchCount(session.user.id);
 
-        return () => {
-          supabase.removeChannel(channel);
-        };
+          // 4. THE REALTIME LISTENER
+          // This watches the 'requests' table for any changes
+          const channel = supabase
+            .channel("sidebar-count-changes")
+            .on(
+              "postgres_changes",
+              { 
+                event: "*", 
+                schema: "public", 
+                table: "requests",
+                filter: `tutor_id=eq.${session.user.id}` // Only listen to YOUR requests
+              },
+              () => {
+                console.log("Change detected! Updating count...");
+                fetchCount(session.user.id);
+              }
+            )
+            .subscribe();
+
+          return () => {
+            supabase.removeChannel(channel);
+          };
+        }
       }
     };
     checkUser();
@@ -81,6 +88,8 @@ export default function TutorDashboard() {
       case "overview": return <TutorOverview profile={profile} />;
       case "sessions": return <UpcomingSessions />;
       case "requests": return <StudentRequests />;
+      case "hours": return <LogHours />;
+      case "leadership": return <LeadershipDashboard />;
       case "resources": return <ResourceLibrary />;
       case "settings": return <VolunteerSettings profile={profile} setProfile={setProfile} />;
       default: return <TutorOverview profile={profile} />;
@@ -93,23 +102,30 @@ export default function TutorDashboard() {
       <aside className="w-72 border-r border-stone-200 p-8 hidden lg:flex flex-col bg-white fixed h-full left-0 top-0 pt-32 shadow-sm">
         <div className="mb-10 px-2">
           <h2 className="text-xl font-playfair font-bold">{profile?.full_name}</h2>
-          <p className="text-[10px] text-stone-400 uppercase tracking-widest mt-1">Certified Tutor</p>
+          <p className="text-[10px] text-stone-400 uppercase tracking-widest mt-1">
+            {profile?.role === "master" ? "Master Admin" : profile?.role === "leadership" ? "Leadership" : "Certified Tutor"}
+          </p>
         </div>
         
         <nav className="space-y-1 flex-1">
           <SidebarButton label="Overview" active={view === "overview"} onClick={() => setView("overview")} />
-          <SidebarButton label="Upcoming Sessions" active={view === "sessions"} onClick={() => setView("sessions")} />
-          
-          {/* 5. Pass the live count here */}
-          <SidebarButton 
-            label="Student Requests" 
-            active={view === "requests"} 
-            onClick={() => setView("requests")} 
-            count={requestCount > 0 ? requestCount : null} 
-          />
-          
-          <SidebarButton label="Resource Library" active={view === "resources"} onClick={() => setView("resources")} />
-          <SidebarButton label="Volunteer Settings" active={view === "settings"} onClick={() => setView("settings")} />
+          {profile?.role === "tutor" && (
+            <>
+              <SidebarButton label="Upcoming Sessions" active={view === "sessions"} onClick={() => setView("sessions")} />
+              <SidebarButton label="Log Hours" active={view === "hours"} onClick={() => setView("hours")} />
+              <SidebarButton 
+                label="Student Requests" 
+                active={view === "requests"} 
+                onClick={() => setView("requests")} 
+                count={requestCount > 0 ? requestCount : null} 
+              />
+              <SidebarButton label="Resource Library" active={view === "resources"} onClick={() => setView("resources")} />
+              <SidebarButton label="Volunteer Settings" active={view === "settings"} onClick={() => setView("settings")} />
+            </>
+          )}
+          {(profile?.role === "master" || profile?.role === "leadership") && (
+            <SidebarButton label="Leadership" active={view === "leadership"} onClick={() => setView("leadership")} />
+          )}
         </nav>
       </aside>
 

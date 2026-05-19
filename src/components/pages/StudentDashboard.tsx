@@ -41,7 +41,7 @@ export default function StudentDashboard() {
       case "learning": return <MyLearning profile={profile} />;
       case "tutors": return <FindTutor />;
       case "materials": return <StudyMaterials />;
-      case "progress": return <ProgressTracking />;
+      case "progress": return <ProgressTracking profile={profile} />;
       case "settings": return <StudentSettings profile={profile} setProfile={setProfile} />;
       default: return <MyLearning profile={profile} />;
     }

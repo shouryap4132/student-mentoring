@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion, type Variants } from "framer-motion";
+import { toast } from "sonner";
 import { supabase } from "../../utils/supabaseClient";
 import { useNavigate, Link } from "react-router-dom";
 
@@ -25,7 +26,7 @@ export default function Login() {
     });
 
     if (authError) {
-      alert(authError.message);
+      toast.error(authError.message);
       setLoading(false);
       return;
     }
@@ -49,6 +50,8 @@ export default function Login() {
         navigate("/tutordashboard");
       } else if (profile?.role === "student") {
         navigate("/studentdashboard");
+      } else if (profile?.role === "master" || profile?.role === "leadership") {
+        navigate("/tutordashboard");
       } else {
         // Fallback if role is undefined or missing
         console.warn("No role found for user, defaulting to student dashboard");
