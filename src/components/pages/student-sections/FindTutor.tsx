@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../../../utils/supabaseClient";
+import { getOrCreateConversation } from "../../../utils/chat";
+import { queueEmailNotification } from "../../../utils/notifications";
+import { toast } from "sonner";
 
 export default function FindTutor() {
   const [tutors, setTutors] = useState<any[]>([]);
@@ -8,6 +12,7 @@ export default function FindTutor() {
   
   const [requestStatuses, setRequestStatuses] = useState<Record<string, string>>({});
   const [selectedDates, setSelectedDates] = useState<Record<string, string>>({});
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchData();
@@ -78,8 +83,35 @@ export default function FindTutor() {
       alert("Error sending request: " + error.message);
     } else {
       setRequestStatuses(prev => ({ ...prev, [tutorId.toLowerCase()]: "pending" }));
+      await queueEmailNotification({
+        recipient_user_id: tutorId,
+        subject: "New tutoring request",
+        body: `A student has requested your help for ${subject || "a session"}. Review your dashboard to accept or decline.`,
+        metadata: { event: "new_request", student_id: session.user.id, tutor_id: tutorId },
+      });
     }
     setRequestingId(null);
+  };
+
+  const handleMessageTutor = async (tutorId: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const { data: conversation, error } = await getOrCreateConversation(session.user.id, tutorId);
+    if (error || !conversation) {
+      toast.error("Could not open chat. Please try again.");
+      return;
+    }
+
+    await queueEmailNotification({
+      recipient_user_id: tutorId,
+      subject: "New student chat request",
+      body: "A student has started a conversation with you. Open your messages to reply.",
+      metadata: { event: "new_chat", conversation_id: conversation.id, student_id: session.user.id },
+    });
+
+    toast.success("Conversation ready. Open the Messages tab to chat.");
+    navigate("/studentdashboard?view=messages");
   };
 
   const handleSchedule = async (tutorId: string) => {
@@ -184,22 +216,37 @@ export default function FindTutor() {
                     >
                       Confirm Session
                     </button>
+                    <button
+                      onClick={() => handleMessageTutor(tutor.id)}
+                      className="w-full py-4 bg-black text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-stone-900 transition-all"
+                    >
+                      Message Tutor
+                    </button>
                   </div>
                 ) : (
-                  <button
-                    disabled={!!status || requestingId === tutor.id}
-                    onClick={() => handleRequest(tutor.id, tutor.subjects?.[0])}
-                    className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${
-                      status 
-                        ? "bg-stone-100 text-stone-300 border border-stone-200 cursor-not-allowed" 
-                        : "bg-black text-white hover:bg-stone-800 shadow-xl shadow-stone-200 active:scale-[0.98]"
-                    }`}
-                  >
-                    {requestingId === tutor.id ? "Sending..." : 
-                     status === "pending" ? "Waiting for Tutor" : 
-                     status === "scheduled" ? "Session Booked" : 
-                     "Request Mentorship"}
-                  </button>
+                  <div className="space-y-3">
+                    <button
+                      disabled={!!status || requestingId === tutor.id}
+                      onClick={() => handleRequest(tutor.id, tutor.subjects?.[0])}
+                      className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${
+                        status 
+                          ? "bg-stone-100 text-stone-300 border border-stone-200 cursor-not-allowed" 
+                          : "bg-black text-white hover:bg-stone-800 shadow-xl shadow-stone-200 active:scale-[0.98]"
+                      }`}
+                    >
+                      {requestingId === tutor.id ? "Sending..." : 
+                       status === "pending" ? "Waiting for Tutor" : 
+                       status === "scheduled" ? "Session Booked" : 
+                       "Request Mentorship"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleMessageTutor(tutor.id)}
+                      className="w-full py-4 bg-stone-100 text-stone-700 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-stone-200 transition-all"
+                    >
+                      Message Tutor
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

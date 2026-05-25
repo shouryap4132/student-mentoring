@@ -57,46 +57,50 @@ export default function TutorOverview({ profile }: any) {
     fetchDashboardData();
 
     // REALTIME LISTENERS - Watch for changes to requests and hours_logs
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
+    let requestsChannel: any = null;
+    let hoursChannel: any = null;
 
-    const requestsChannel = supabase
-      .channel(`overview-requests-${session.user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "requests",
-          filter: `tutor_id=eq.${session.user.id}`,
-        },
-        () => {
-          console.log("Request change detected in overview! Refreshing...");
-          fetchDashboardData();
-        }
-      )
-      .subscribe();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return;
 
-    const hoursChannel = supabase
-      .channel(`overview-hours-${session.user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "hours_logs",
-          filter: `tutor_id=eq.${session.user.id}`,
-        },
-        () => {
-          console.log("Hours log change detected in overview! Refreshing...");
-          fetchDashboardData();
-        }
-      )
-      .subscribe();
+      requestsChannel = supabase
+        .channel(`overview-requests-${session.user.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "requests",
+            filter: `tutor_id=eq.${session.user.id}`,
+          },
+          () => {
+            console.log("Request change detected in overview! Refreshing...");
+            fetchDashboardData();
+          }
+        )
+        .subscribe();
+
+      hoursChannel = supabase
+        .channel(`overview-hours-${session.user.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "hours_logs",
+            filter: `tutor_id=eq.${session.user.id}`,
+          },
+          () => {
+            console.log("Hours log change detected in overview! Refreshing...");
+            fetchDashboardData();
+          }
+        )
+        .subscribe();
+    });
 
     return () => {
-      supabase.removeChannel(requestsChannel);
-      supabase.removeChannel(hoursChannel);
+      if (requestsChannel) supabase.removeChannel(requestsChannel);
+      if (hoursChannel) supabase.removeChannel(hoursChannel);
     };
   }, [profile]);
 

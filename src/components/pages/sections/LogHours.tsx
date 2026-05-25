@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { supabase } from "../../../utils/supabaseClient";
+import { queueEmailNotification } from "../../../utils/notifications";
 
 export default function LogHours() {
   const [students, setStudents] = useState<any[]>([]);
@@ -80,6 +81,12 @@ export default function LogHours() {
       toast.error(error.message || "Unable to log hours.");
     } else {
       toast.success("Hours logged successfully.");
+      await queueEmailNotification({
+        recipient_user_id: studentId,
+        subject: "A tutor logged your latest session hours",
+        body: `Your tutor has recorded ${hours} hour(s) for ${subject || "a tutoring session"}. Check your student dashboard for progress updates.`,
+        metadata: { event: "hours_logged", tutor_id: session.user.id, student_id: studentId },
+      });
       setHours("");
       setDate("");
       setSubject("");

@@ -37,28 +37,30 @@ export default function ProgressTracking({ profile }: any) {
     fetchProgress();
 
     // REALTIME LISTENER - Watch for approved hours changes
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
+    let channel: any = null;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return;
 
-    const channel = supabase
-      .channel(`progress-${session.user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "hours_logs",
-          filter: `student_id=eq.${session.user.id}`,
-        },
-        () => {
-          console.log("Progress update detected! Refreshing...");
-          fetchProgress();
-        }
-      )
-      .subscribe();
+      channel = supabase
+        .channel(`progress-${session.user.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "hours_logs",
+            filter: `student_id=eq.${session.user.id}`,
+          },
+          () => {
+            console.log("Progress update detected! Refreshing...");
+            fetchProgress();
+          }
+        )
+        .subscribe();
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel);
     };
   }, [profile]);
 

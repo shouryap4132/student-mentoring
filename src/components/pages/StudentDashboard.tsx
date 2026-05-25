@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../../utils/supabaseClient";
 
 // Section Imports
@@ -8,8 +8,10 @@ import FindTutor from "./student-sections/FindTutor.tsx";
 import StudyMaterials from "./student-sections/StudyMaterials.tsx";
 import ProgressTracking from "./student-sections/ProgressTracking.tsx";
 import StudentSettings from "./student-sections/StudentSettings.tsx";
+import Messaging from "./student-sections/Messaging.tsx";
 
 export default function StudentDashboard() {
+  const location = useLocation();
   const [view, setView] = useState("learning");
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
@@ -30,6 +32,9 @@ export default function StudentDashboard() {
         navigate("/login");
       } else {
         setProfile(data);
+        const params = new URLSearchParams(location.search);
+        const requestedView = params.get("view");
+        if (requestedView) setView(requestedView);
       }
       setLoading(false);
     };
@@ -42,6 +47,7 @@ export default function StudentDashboard() {
       case "tutors": return <FindTutor />;
       case "materials": return <StudyMaterials />;
       case "progress": return <ProgressTracking profile={profile} />;
+      case "messages": return <Messaging />;
       case "settings": return <StudentSettings profile={profile} setProfile={setProfile} />;
       default: return <MyLearning profile={profile} />;
     }
@@ -66,6 +72,7 @@ export default function StudentDashboard() {
         <nav className="space-y-1 flex-1">
           <SidebarButton label="My Learning" active={view === "learning"} onClick={() => setView("learning")} />
           <SidebarButton label="Find a Tutor" active={view === "tutors"} onClick={() => setView("tutors")} />
+          <SidebarButton label="Messages" active={view === "messages"} onClick={() => setView("messages")} />
           <SidebarButton label="Study Materials" active={view === "materials"} onClick={() => setView("materials")} />
           <SidebarButton label="Progress Tracking" active={view === "progress"} onClick={() => setView("progress")} />
           <SidebarButton label="Account Settings" active={view === "settings"} onClick={() => setView("settings")} />

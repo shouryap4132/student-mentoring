@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "../../../utils/supabaseClient";
+import { queueEmailNotification } from "../../../utils/notifications";
 
 export default function StudentRequests() {
   const [requests, setRequests] = useState<any[]>([]);
@@ -67,7 +68,7 @@ export default function StudentRequests() {
     fetchRequests();
   }, []);
 
-  const handleAccept = async (requestId: string) => {
+  const handleAccept = async (requestId: string, studentId: string) => {
     console.log("DEBUG: Attempting to accept request:", requestId);
     const { error } = await supabase
       .from("requests")
@@ -79,11 +80,17 @@ export default function StudentRequests() {
       toast.error("Error accepting request: " + error.message);
     } else {
       setRequests(prev => prev.filter(r => r.id !== requestId));
+      await queueEmailNotification({
+        recipient_user_id: studentId,
+        subject: "Your tutoring request was accepted",
+        body: "Your tutor accepted your request. Check your dashboard for scheduling details.",
+        metadata: { event: "request_accepted", request_id: requestId },
+      });
       toast.success("Request accepted!");
     }
   };
 
-  const handleDecline = async (requestId: string) => {
+  const handleDecline = async (requestId: string, studentId: string) => {
     console.log("DEBUG: Attempting to decline request:", requestId);
     const { error } = await supabase
       .from("requests")
@@ -95,6 +102,12 @@ export default function StudentRequests() {
       toast.error("Error declining request: " + error.message);
     } else {
       setRequests(prev => prev.filter(r => r.id !== requestId));
+      await queueEmailNotification({
+        recipient_user_id: studentId,
+        subject: "Your tutoring request was declined",
+        body: "Your tutor declined the request. You can request another tutor or try again later.",
+        metadata: { event: "request_declined", request_id: requestId },
+      });
       toast.success("Request declined.");
     }
   };
@@ -128,13 +141,13 @@ export default function StudentRequests() {
               </div>
               <div className="flex gap-3">
                 <button 
-                  onClick={() => handleDecline(req.id)}
+                  onClick={() => handleDecline(req.id, req.student_id)}
                   className="px-6 py-3 bg-stone-200 text-stone-900 rounded-xl text-xs font-bold uppercase hover:bg-stone-300 transition-all"
                 >
                   Decline
                 </button>
                 <button 
-                  onClick={() => handleAccept(req.id)}
+                  onClick={() => handleAccept(req.id, req.student_id)}
                   className="px-6 py-3 bg-black text-white rounded-xl text-xs font-bold uppercase hover:bg-stone-900 transition-all"
                 >
                   Accept

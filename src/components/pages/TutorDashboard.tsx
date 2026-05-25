@@ -121,6 +121,7 @@ export default function TutorDashboard() {
                 onClick={() => setView("requests")} 
                 count={requestCount > 0 ? requestCount : null} 
               />
+              <SidebarButton label="Messages" active={view === "messages"} onClick={() => setView("messages")} />
               <SidebarButton label="Resource Library" active={view === "resources"} onClick={() => setView("resources")} />
               <SidebarButton label="Volunteer Settings" active={view === "settings"} onClick={() => setView("settings")} />
             </>

@@ -18,59 +18,89 @@ export default function Signup() {
   const [fullName, setFullName] = useState("");
   const [gradeLevel, setGradeLevel] = useState("");
   const [subjectExpertise, setSubjectExpertise] = useState("");
+  const [bio, setBio] = useState("");
+  const [qualifications, setQualifications] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
+    
     setLoading(true);
+    console.log("Starting signup process for:", email);
 
-    // 1. Create auth account
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
+    try {
+      // 1. Create the Auth User
+      // We send full_name in metadata so the DB can use it if a trigger exists
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          },
         },
-      },
-    });
+      });
 
-    if (authError) {
-      toast.error(authError.message);
-      setLoading(false);
-      return;
-    }
-
-    // 2. Insert profile with correct role (default to 'student' if neither selected)
-    if (authData.user) {
-      const profileRole = role || "student"; // Default to student
-      
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .insert({
-          id: authData.user.id,
-          email: email,
-          full_name: fullName,
-          role: profileRole,
-          grade_level: profileRole === "student" ? gradeLevel : null,
-          subjects: profileRole === "tutor" ? [subjectExpertise] : [],
-          bio: "",
-          avatar_url: null,
-          created_at: new Date().toISOString(),
-        });
-
-      if (profileError) {
-        console.error("Profile creation error:", profileError);
-        toast.error("Account created but profile setup failed. Please try logging in.");
-        setLoading(false);
-        return;
+      if (authError) {
+        console.error("Auth Step Error:", authError);
+        throw new Error(authError.message);
       }
 
-      toast.success("Account created! You can now sign in.");
+      if (!authData.user) {
+        throw new Error("No user data returned from Supabase.");
+      }
+
+      console.log("Auth successful, User ID:", authData.user.id);
+
+      // 2. Create/Update the Profile
+      const profileRole = role || "student";
+      const profilePayload = {
+        id: authData.user.id,
+        email: email,
+        full_name: fullName,
+        role: profileRole,
+        grade_level: profileRole === "student" ? gradeLevel : null,
+        subjects: profileRole === "tutor" ? [subjectExpertise] : [],
+        bio: bio,
+        qualifications: profileRole === "tutor" ? qualifications : "",
+        profile_complete: true,
+        created_at: new Date().toISOString(),
+      };
+
+      // Use upsert with onConflict and return the inserted row to inspect errors
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .upsert(profilePayload, { onConflict: "id" })
+        .select()
+        .maybeSingle();
+
+      if (profileError) {
+        console.error("Profile Step Error:", profileError);
+        if (profileError.status === 403 || (profileError.message && profileError.message.toLowerCase().includes("permission"))) {
+          toast.warning("Account created, but profile failed to save due to DB permissions (RLS). Run the RLS policy SQL provided or allow authenticated users to insert/update their own profile.");
+        } else {
+          toast.warning("Account created, but profile details failed to save. Check console for details.");
+        }
+      } else {
+        console.log("Profile created:", profileData);
+        if (!profileData) {
+          // No error object but no row returned — warn the developer
+          console.warn("No profile row returned after upsert. Verify RLS policies and that 'id' equals auth user id.");
+          toast.warning("Account created, but profile may not have been saved. Check RLS policies.");
+        } else {
+          toast.success("Account created successfully!");
+        }
+      }
+
       navigate("/login");
+
+    } catch (err: any) {
+      console.error("Signup Catch Block:", err);
+      toast.error(err.message || "An unexpected error occurred");
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   return (
@@ -86,7 +116,6 @@ export default function Signup() {
           <p className="text-stone-500 font-satoshi">First, tell us who you are.</p>
         </div>
 
-        {/* ROLE SELECTION */}
         <div className="grid md:grid-cols-2 gap-8 mb-12">
           <RoleCard 
             title="I want to learn" 
@@ -138,23 +167,51 @@ export default function Signup() {
                 </div>
 
                 {role === "tutor" ? (
-                  <Input 
-                    label="Primary Subject Expertise" 
-                    value={subjectExpertise}
-                    onChange={(e: any) => setSubjectExpertise(e.target.value)}
-                    type="text" 
-                    placeholder="e.g. AP Calculus" 
-                    required
-                  />
+                  <>
+                    <Input 
+                      label="Primary Subject Expertise" 
+                      value={subjectExpertise}
+                      onChange={(e: any) => setSubjectExpertise(e.target.value)}
+                      type="text" 
+                      placeholder="e.g. AP Calculus" 
+                      required
+                    />
+                    <Input 
+                      label="Short Bio" 
+                      value={bio}
+                      onChange={(e: any) => setBio(e.target.value)}
+                      type="text" 
+                      placeholder="Share your teaching background"
+                      required
+                    />
+                    <Input 
+                      label="Qualifications" 
+                      value={qualifications}
+                      onChange={(e: any) => setQualifications(e.target.value)}
+                      type="text" 
+                      placeholder="e.g. Certified Tutor, STEM Mentor"
+                      required
+                    />
+                  </>
                 ) : (
-                  <Input 
-                    label="Current Grade Level" 
-                    value={gradeLevel}
-                    onChange={(e: any) => setGradeLevel(e.target.value)}
-                    type="text" 
-                    placeholder="e.g. 11th Grade" 
-                    required
-                  />
+                  <>
+                    <Input 
+                      label="Current Grade Level" 
+                      value={gradeLevel}
+                      onChange={(e: any) => setGradeLevel(e.target.value)}
+                      type="text" 
+                      placeholder="e.g. 11th Grade" 
+                      required
+                    />
+                    <Input 
+                      label="Short Bio" 
+                      value={bio}
+                      onChange={(e: any) => setBio(e.target.value)}
+                      type="text" 
+                      placeholder="Tell us what you are studying"
+                      required
+                    />
+                  </>
                 )}
 
                 <Input 
