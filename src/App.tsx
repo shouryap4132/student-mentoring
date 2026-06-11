@@ -1,38 +1,35 @@
 import { Routes, Route, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
-import BodyContent from "./components/pages/Body";
-import About from "./components/pages/About";
-import Contact from "./components/pages/Contact";
-import SignUp from "./components/pages/SignUp";
+import Home from "./pages/Home";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
+import SignUp from "./pages/SignUp";
+import Login from "./pages/Login";
+import StudentDashboard from "./pages/StudentDashboard";
+import TutorDashboard from "./pages/TutorDashboard";
+import LeadershipDashboard from "./pages/LeadershipDashboard";
+import MasterDashboard from "./pages/MasterDashboard";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
-import TutorDashboard from "./components/pages/TutorDashboard";
-import Login from "./components/pages/Login";
-import StudentDashboard from "./components/pages/StudentDashboard";
-import LeadershipDashboard from "./components/pages/LeadershipDashboard";
-import MasterDashboard from "./components/pages/MasterDashboard";
-
-
-// Create a dummy page for now to test
 
 function App() {
   const location = useLocation();
-  const hideFooter = ["/tutordashboard", "/studentdashboard", "/leadership", "/master"].includes(location.pathname);
+  const hideFooter = ["/tutordashboard", "/studentdashboard", "/leadership", "/masterdashboard"].includes(location.pathname);
 
   return (
     <>
-      <Navbar /> 
-      
+      <Navbar />
+
       <Routes>
-        <Route path="/" element={<BodyContent />} />
+        <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/signup" element={<SignUp />} />
-        <Route path="/tutordashboard" element={<TutorDashboard />} />
-        <Route path="/studentdashboard" element={<StudentDashboard />} />
-        <Route path="/leadership" element={<LeadershipDashboard />} />
-        <Route path="/master" element={<MasterDashboard />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/studentdashboard" element={<StudentDashboard />} />
+        <Route path="/tutordashboard" element={<TutorDashboard />} />
+        <Route path="/leadership" element={<LeadershipDashboard />} />
+        <Route path="/masterdashboard" element={<MasterDashboard />} />
       </Routes>
 
       <Toaster position="top-right" />
